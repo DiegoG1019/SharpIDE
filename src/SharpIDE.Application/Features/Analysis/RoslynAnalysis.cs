@@ -1,13 +1,23 @@
-﻿using System.Diagnostics;
+﻿using System.Collections.Immutable;
+using System.Diagnostics;
 using Ardalis.GuardClauses;
-using Microsoft.CodeAnalysis.Classification;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CodeActions;
+using Microsoft.CodeAnalysis.CodeFixes;
+using Microsoft.CodeAnalysis.CodeRefactorings;
+using Microsoft.CodeAnalysis.Diagnostics;
+using Microsoft.CodeAnalysis.Host.Mef;
 using Microsoft.CodeAnalysis.MSBuild;
+using Microsoft.CodeAnalysis.Text;
+using NuGet.Packaging;
 
 namespace SharpIDE.Application.Features.Analysis;
 
 public static class RoslynAnalysis
 {
 	private static MSBuildWorkspace? _workspace;
+	private static HashSet<CodeFixProvider> _codeFixProviders = [];
+	private static HashSet<CodeRefactoringProvider> _codeRefactoringProviders = [];
 	public static void StartSolutionAnalysis(string solutionFilePath)
 	{
 		_ = Task.Run(async () =>
@@ -26,12 +36,42 @@ public static class RoslynAnalysis
 	{
 		Console.WriteLine($"RoslynAnalysis: Loading solution");
 		var timer = Stopwatch.StartNew();
-		_workspace ??= MSBuildWorkspace.Create();
-		_workspace.WorkspaceFailed += (o, e) => throw new InvalidOperationException($"Workspace failed: {e.Diagnostic.Message}");
+		if (_workspace is null)
+		{
+			// is this hostServices necessary? test without it - just getting providers from assemblies instead
+			var host = MefHostServices.Create(MefHostServices.DefaultAssemblies);
+			_workspace ??= MSBuildWorkspace.Create(host);
+			_workspace.WorkspaceFailed += (o, e) => throw new InvalidOperationException($"Workspace failed: {e.Diagnostic.Message}");
+		}
 		var solution = await _workspace.OpenSolutionAsync(solutionFilePath, new Progress());
 		timer.Stop();
 		Console.WriteLine($"RoslynAnalysis: Solution loaded in {timer.ElapsedMilliseconds}ms");
 		Console.WriteLine();
+
+		foreach (var assembly in MefHostServices.DefaultAssemblies)
+		{
+			//var assembly = analyzer.GetAssembly();
+			var fixers = CodeFixProviderLoader.LoadCodeFixProviders([assembly], LanguageNames.CSharp);
+			_codeFixProviders.AddRange(fixers);
+			var refactoringProviders = CodeRefactoringProviderLoader.LoadCodeRefactoringProviders([assembly], LanguageNames.CSharp);
+			_codeRefactoringProviders.AddRange(refactoringProviders);
+		}
+
+		// // TODO: Distinct on the assemblies first
+		// foreach (var project in solution.Projects)
+		// {
+		// 	var relevantAnalyzerReferences = project.AnalyzerReferences.OfType<AnalyzerFileReference>().ToArray();
+		// 	var assemblies = relevantAnalyzerReferences.Select(a => a.GetAssembly()).ToArray();
+		// 	var language = project.Language;
+		// 	//var analyzers = relevantAnalyzerReferences.SelectMany(a => a.GetAnalyzers(language));
+		// 	var fixers = CodeFixProviderLoader.LoadCodeFixProviders(assemblies, language);
+		// 	_codeFixProviders.AddRange(fixers);
+		// 	var refactoringProviders = CodeRefactoringProviderLoader.LoadCodeRefactoringProviders(assemblies, language);
+		// 	_codeRefactoringProviders.AddRange(refactoringProviders);
+		// }
+
+		_codeFixProviders = _codeFixProviders.DistinctBy(s => s.GetType().Name).ToHashSet();
+		_codeRefactoringProviders = _codeRefactoringProviders.DistinctBy(s => s.GetType().Name).ToHashSet();
 
 		foreach (var project in solution.Projects)
 		{
@@ -39,27 +79,74 @@ public static class RoslynAnalysis
 			var compilation = await project.GetCompilationAsync();
 			Guard.Against.Null(compilation, nameof(compilation));
 
-			// Get diagnostics (built-in or custom analyzers)
 			var diagnostics = compilation.GetDiagnostics();
-			var nonHiddenDiagnostics = diagnostics.Where(d => d.Severity is not Microsoft.CodeAnalysis.DiagnosticSeverity.Hidden).ToList();
-
+			var nonHiddenDiagnostics = diagnostics.Where(d => d.Severity is not DiagnosticSeverity.Hidden).ToList();
+			//
 			foreach (var diagnostic in nonHiddenDiagnostics)
 			{
 				Console.WriteLine(diagnostic);
 				// Optionally run CodeFixProviders here
 			}
-			foreach (var document in project.Documents)
-			{
-				// var syntaxTree = await document.GetSyntaxTreeAsync();
-				// var root = await syntaxTree!.GetRootAsync();
-				// var classifiedSpans = await Classifier.GetClassifiedSpansAsync(document, root.FullSpan);
-				// foreach (var span in classifiedSpans)
-				// {
-				// 	var classifiedSpan = root.GetText().GetSubText(span.TextSpan);
-				// 	Console.WriteLine($"{span.TextSpan}: {span.ClassificationType}");
-				// 	Console.WriteLine(classifiedSpan);
-				// }
-			}
+			// foreach (var document in project.Documents)
+			// {
+			// 	var semanticModel = await document.GetSemanticModelAsync();
+			// 	Guard.Against.Null(semanticModel, nameof(semanticModel));
+			// 	var documentDiagnostics = semanticModel.GetDiagnostics().Where(d => d.Severity is not DiagnosticSeverity.Hidden).ToList();
+			// 	foreach (var diagnostic in documentDiagnostics)
+			// 	{
+			// 		var test = await GetCodeFixesAsync(document, diagnostic);
+			// 	}
+			// 	// var syntaxTree = await document.GetSyntaxTreeAsync();
+			// 	// var root = await syntaxTree!.GetRootAsync();
+			// 	// var classifiedSpans = await Classifier.GetClassifiedSpansAsync(document, root.FullSpan);
+			// 	// foreach (var span in classifiedSpans)
+			// 	// {
+			// 	// 	var classifiedSpan = root.GetText().GetSubText(span.TextSpan);
+			// 	// 	Console.WriteLine($"{span.TextSpan}: {span.ClassificationType}");
+			// 	// 	Console.WriteLine(classifiedSpan);
+			// 	// }
+			// }
 		}
+		Console.WriteLine("RoslynAnalysis: Analysis completed.");
+	}
+
+	public static async Task<ImmutableArray<CodeAction>> GetCodeFixesAsync(Document document, Diagnostic diagnostic)
+	{
+		var cancellationToken = CancellationToken.None;
+		var position = diagnostic.Location.SourceSpan.Start;
+		var codeActions = new List<CodeAction>();
+		var context = new CodeFixContext(
+			document,
+			diagnostic,
+			(action, _) => codeActions.Add(action), // callback collects fixes
+			cancellationToken
+		);
+
+		var relevantProviders = _codeFixProviders
+			.Where(provider => provider.FixableDiagnosticIds.Contains(diagnostic.Id));
+
+		foreach (var provider in relevantProviders)
+		{
+			await provider.RegisterCodeFixesAsync(context);
+		}
+
+		var refactorContext = new CodeRefactoringContext(
+			document,
+			diagnostic.Location.SourceSpan,
+			action => codeActions.Add(action),
+			cancellationToken
+		);
+
+		foreach (var provider in _codeRefactoringProviders)
+		{
+			await provider.ComputeRefactoringsAsync(refactorContext).ConfigureAwait(false);
+		}
+
+		if (codeActions.Count is not 0)
+		{
+			;
+		}
+
+		return codeActions.ToImmutableArray();
 	}
 }
