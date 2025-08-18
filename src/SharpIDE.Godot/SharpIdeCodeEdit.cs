@@ -36,17 +36,19 @@ public partial class SharpIdeCodeEdit : CodeEdit
 	{
 		_popupMenu = GetNode<PopupMenu>("CodeFixesMenu");
 		_popupMenu.IdPressed += OnCodeFixSelected;
-		this.CodeCompletionRequested += OnCodeCompletionRequested;
-		this.CodeFixesRequested += OnCodeFixesRequested;
-		this.CaretChanged += () =>
-		{
-			_selectionStartCol = GetSelectionFromColumn();
-			_selectionEndCol = GetSelectionToColumn();
-			_currentLine = GetCaretLine();
-			GD.Print($"Selection changed to line {_currentLine}, start {_selectionStartCol}, end {_selectionEndCol}");
-		};
+		CodeCompletionRequested += OnCodeCompletionRequested;
+		CodeFixesRequested += OnCodeFixesRequested;
+		CaretChanged += OnCaretChanged;
 		TextChanged += OnTextChanged;
-		this.SyntaxHighlighter = _syntaxHighlighter;
+		SyntaxHighlighter = _syntaxHighlighter;
+	}
+
+	private void OnCaretChanged()
+	{
+		_selectionStartCol = GetSelectionFromColumn();
+		_selectionEndCol = GetSelectionToColumn();
+		_currentLine = GetCaretLine();
+		GD.Print($"Selection changed to line {_currentLine}, start {_selectionStartCol}, end {_selectionEndCol}");
 	}
 
 	private void OnTextChanged()
