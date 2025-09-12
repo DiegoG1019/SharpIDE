@@ -10,6 +10,9 @@ public partial class SolutionExplorerPanel : Panel
 	[Signal]
 	public delegate void FileSelectedEventHandler(SharpIdeFileGodotContainer file);
 	
+	[Export]
+	public Texture2D CsharpFileIcon { get; set; } = null!;
+	
 	public SharpIdeSolutionModel SolutionModel { get; set; } = null!;
 	private Tree _tree = null!;
 	public override void _Ready()

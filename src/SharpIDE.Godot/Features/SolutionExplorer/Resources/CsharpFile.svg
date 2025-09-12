@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" class="mud-icon-root mud-svg-icon mud-error-text mud-icon-size-medium" focusable="false" viewBox="0 0 24 24" aria-hidden="true" role="img" style="fill: rgb(40, 167, 69);">
+    <path d="M0 0h24v24H0z" fill="none"/>
+    <text x="50%" y="50%"
+          text-anchor="middle" dominant-baseline="middle"
+          font-family="Segoe UI, Roboto, Helvetica, Arial, sans-serif"
+          font-size="16" font-weight="700"
+    >C#</text>
+</svg>
