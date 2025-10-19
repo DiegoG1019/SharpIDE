@@ -30,7 +30,7 @@ public partial class SolutionExplorerPanel
             }
             else if (actionId is FileContextMenuOptions.RevealInFileExplorer)
             {
-                OS.ShellOpen(Path.GetDirectoryName(file.Path)!);
+                OS.ShellShowInFileManager(file.Path);
             }
             else if (actionId is FileContextMenuOptions.CopyFullPath)
             {
