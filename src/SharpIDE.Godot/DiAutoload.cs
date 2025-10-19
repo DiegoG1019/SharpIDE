@@ -30,6 +30,8 @@ public partial class DiAutoload : Node
         services.AddScoped<IdeFileWatcher>();
         services.AddScoped<IdeOpenTabsFileManager>();
         services.AddScoped<RoslynAnalysis>();
+        services.AddScoped<IdeFileOperationsService>();
+        services.AddScoped<SharpIdeSolutionModificationService>();
 
         _serviceProvider = services.BuildServiceProvider();
         GetTree().NodeAdded += OnNodeAdded;

@@ -8,10 +8,12 @@ namespace SharpIDE.Application.Features.FileWatching;
 public class IdeFileExternalChangeHandler
 {
 	private readonly FileChangedService _fileChangedService;
+	private readonly SharpIdeSolutionModificationService _sharpIdeSolutionModificationService;
 	public SharpIdeSolutionModel SolutionModel { get; set; } = null!;
-	public IdeFileExternalChangeHandler(FileChangedService fileChangedService)
+	public IdeFileExternalChangeHandler(FileChangedService fileChangedService, SharpIdeSolutionModificationService sharpIdeSolutionModificationService)
 	{
 		_fileChangedService = fileChangedService;
+		_sharpIdeSolutionModificationService = sharpIdeSolutionModificationService;
 		GlobalEvents.Instance.FileSystemWatcherInternal.FileChanged.Subscribe(OnFileChanged);
 		GlobalEvents.Instance.FileSystemWatcherInternal.FileCreated.Subscribe(OnFileCreated);
 		GlobalEvents.Instance.FileSystemWatcherInternal.DirectoryCreated.Subscribe(OnFolderCreated);
@@ -32,10 +34,7 @@ public class IdeFileExternalChangeHandler
 			Console.WriteLine($"Error - Containing Folder of {folderPath} does not exist");
 			return;
 		}
-		// Passing [] to allFiles and allFolders, as we assume that a brand new folder has no subfolders or files yet
-		sharpIdeFolder = new SharpIdeFolder(new DirectoryInfo(folderPath), containingFolder, [], []);
-		containingFolder.Folders.Add(sharpIdeFolder);
-		SolutionModel.AllFolders.Add(sharpIdeFolder);
+		await _sharpIdeSolutionModificationService.CreateDirectory(containingFolder, folderPath);
 	}
 
 	private async Task OnFileCreated(string filePath)
