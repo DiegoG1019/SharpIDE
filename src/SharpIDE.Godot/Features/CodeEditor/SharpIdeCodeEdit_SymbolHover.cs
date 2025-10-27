@@ -12,7 +12,6 @@ public partial class SharpIdeCodeEdit
     private void CloseSymbolHoverWindow()
     {
         _symbolHoverTimer?.EmitSignal(Timer.SignalName.Timeout);
-        _symbolHoverTimer = null;
     }
     
 	// This method is a bit of a disaster - we create an additional invisible Window, so that the tooltip window doesn't disappear while the mouse is over the hovered symbol
@@ -82,13 +81,20 @@ public partial class SharpIdeCodeEdit
         {
             tooltipWindow.QueueFree();
             symbolNameHoverWindow.QueueFree();
+            tooltipWindow.MouseExited -= StartTimer;
+            tooltipWindow.MouseEntered -= StopTimer;
+            symbolNameHoverWindow.MouseExited -= StartTimer;
+            symbolNameHoverWindow.MouseEntered -= StopTimer;
+            _symbolHoverTimer = null;
         };
         _symbolHoverTimer = timer;
 
-        tooltipWindow.MouseExited += () => timer.Start();
-        tooltipWindow.MouseEntered += () => timer.Stop();
-        symbolNameHoverWindow.MouseExited += () => timer.Start();
-        symbolNameHoverWindow.MouseEntered += () => timer.Stop();
+        void StartTimer() => timer.Start();
+        void StopTimer() => timer.Stop();
+        tooltipWindow.MouseExited += StartTimer;
+        tooltipWindow.MouseEntered += StopTimer;
+        symbolNameHoverWindow.MouseExited += StartTimer;
+        symbolNameHoverWindow.MouseEntered += StopTimer;
 
         var styleBox = new StyleBoxFlat
         {
