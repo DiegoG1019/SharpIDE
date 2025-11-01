@@ -17,6 +17,8 @@ public partial class PackageEntry : MarginContainer
     private static readonly Color Source_4_Color = new Color("966a00");
     private static readonly Color Source_5_Color = new Color("efaeae");
     
+    [Inject] private readonly NugetPackageIconCacheService _nugetPackageIconCacheService = null!;
+    
     public IdePackageResult PackageResult { get; set; } = null!;
     public override void _Ready()
     {
@@ -35,26 +37,24 @@ public partial class PackageEntry : MarginContainer
         _currentVersionLabel.Text = string.Empty;
         //_latestVersionLabel.Text = $"Latest: {PackageResult.PackageSearchMetadata.vers.LatestVersion}";
         _sourceNamesContainer.QueueFreeChildren();
-        
-        var iconUrl = PackageResult.PackageSearchMetadata.IconUrl;
-        if (iconUrl != null)
+
+        _ = Task.GodotRun(async () =>
         {
-            var httpRequest = new HttpRequest(); // Godot's abstraction
-            AddChild(httpRequest);
-            httpRequest.RequestCompleted += (result, responseCode, headers, body) =>
+            var (iconBytes, iconFormat) = await _nugetPackageIconCacheService.GetNugetPackageIcon(PackageResult.PackageSearchMetadata.Identity.Id, PackageResult.PackageSearchMetadata.IconUrl);
+            var image = new Image();
+            var error = iconFormat switch
             {
-                if (responseCode is 200)
-                {
-                    var image = new Image();
-                    image.LoadPngFromBuffer(body);
-                    image.Resize(32, 32, Image.Interpolation.Lanczos);
-                    var loadedImageTexture = ImageTexture.CreateFromImage(image);
-                    _packageIconTextureRect.Texture = loadedImageTexture;
-                }
-                httpRequest.QueueFree();
+                NugetPackageIconFormat.Png => image.LoadPngFromBuffer(iconBytes),
+                NugetPackageIconFormat.Jpg => image.LoadJpgFromBuffer(iconBytes),
+                _ => Error.FileUnrecognized
             };
-            httpRequest.Request(iconUrl.ToString());
-        }
+            if (error is Error.Ok)
+            {
+                image.Resize(32, 32, Image.Interpolation.Lanczos); // Probably should cache resized images instead
+                var loadedImageTexture = ImageTexture.CreateFromImage(image);
+                await this.InvokeAsync(() => _packageIconTextureRect.Texture = loadedImageTexture);
+            }
+        });
         
         foreach (var source in PackageResult.PackageSources)
         {

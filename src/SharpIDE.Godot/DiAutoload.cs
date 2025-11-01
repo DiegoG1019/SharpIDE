@@ -38,12 +38,15 @@ public partial class DiAutoload : Node
         services.AddScoped<FileChangedService>();
         services.AddScoped<DotnetUserSecretsService>();
         services.AddScoped<NugetClientService>();
+        services.AddScoped<NugetPackageIconCacheService>();
         services.AddScoped<IdeFileWatcher>();
         services.AddScoped<IdeNavigationHistoryService>();
         services.AddScoped<IdeOpenTabsFileManager>();
         services.AddScoped<RoslynAnalysis>();
         services.AddScoped<IdeFileOperationsService>();
         services.AddScoped<SharpIdeSolutionModificationService>();
+
+        services.AddHttpClient();
         services.AddLogging(builder =>
         {
             builder.AddConsole();
