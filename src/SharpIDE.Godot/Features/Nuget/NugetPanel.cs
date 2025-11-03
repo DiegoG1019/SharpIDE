@@ -123,6 +123,7 @@ public partial class NugetPanel : Control
 		}).ToList();
 		await this.InvokeAsync(() =>
 		{
+			_availablePackagesItemList.QueueFreeChildren();
 			foreach (var scene in scenes)
 			{
 				_availablePackagesItemList.AddChild(scene);
@@ -147,6 +148,8 @@ public partial class NugetPanel : Control
 		var directScenes = scenes.Except(transitiveScenes).ToList();
 		await this.InvokeAsync(() =>
 		{
+			_installedPackagesVboxContainer.QueueFreeChildren();
+			_implicitlyInstalledPackagesItemList.QueueFreeChildren();
 			foreach (var transitiveScene in transitiveScenes)
 			{
 				_implicitlyInstalledPackagesItemList.AddChild(transitiveScene);
