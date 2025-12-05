@@ -21,6 +21,8 @@ public partial class NugetPanel : Control
 	private Label _implicitlyInstalledPackagesResultCountLabel = null!;
 	
 	private ProgressBar _installedPackagesProgressBar = null!;
+	private ProgressBar _implicitlyInstalledPackagesProgressBar = null!;
+	private ProgressBar _packageSearchProgressBar = null!;
 	
 	private NugetPackageDetails _nugetPackageDetails = null!;
 
@@ -49,7 +51,11 @@ public partial class NugetPanel : Control
 		_implicitlyInstalledPackagesSlnOrProjectNameLabel = GetNode<Label>("%ImplicitlyInstalledPackagesSlnOrProjectNameLabel");
 		_implicitlyInstalledPackagesResultCountLabel = GetNode<Label>("%ImplicitlyInstalledPackagesResultCountLabel");
 		_installedPackagesProgressBar = GetNode<ProgressBar>("%InstalledPackagesProgressBar");
+		_implicitlyInstalledPackagesProgressBar = GetNode<ProgressBar>("%ImplicitlyInstalledPackagesProgressBar");
+		_packageSearchProgressBar = GetNode<ProgressBar>("%PackageSearchProgressBar");
 		_installedPackagesProgressBar.Visible = false;
+		_implicitlyInstalledPackagesProgressBar.Visible = false;
+		_packageSearchProgressBar.Visible = false;
 		_nugetPackageDetails.Visible = false;
 		_installedPackagesVboxContainer.QueueFreeChildren();
 		_implicitlyInstalledPackagesItemList.QueueFreeChildren();
