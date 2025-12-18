@@ -13,7 +13,6 @@ using Roslyn.Utilities;
 using SharpIDE.Application;
 using SharpIDE.Application.Features.Analysis;
 using SharpIDE.Application.Features.Analysis.Razor;
-using SharpIDE.Application.Features.Debugging;
 using SharpIDE.Application.Features.Editor;
 using SharpIDE.Application.Features.Events;
 using SharpIDE.Application.Features.FilePersistence;
@@ -48,7 +47,6 @@ public partial class SharpIdeCodeEdit : CodeEdit
 	private bool _settingWholeDocumentTextSuppressLineEditsEvent; // A dodgy workaround - setting the whole document doesn't guarantee that the line count stayed the same etc. We are still going to have broken highlighting. TODO: Investigate getting minimal text change ranges, and change those ranges only
 	private bool _fileDeleted;
 	private IDisposable? _projectDiagnosticsObserveDisposable;
-	private readonly AsyncBatchingWorkQueue _selectionChangedQueue;
 	
     [Inject] private readonly IdeOpenTabsFileManager _openTabsFileManager = null!;
     [Inject] private readonly RunService _runService = null!;
@@ -214,28 +212,6 @@ public partial class SharpIdeCodeEdit : CodeEdit
 		SetSymbolLookupWordAsValid(true);
 	}
 
-	private async ValueTask ProcessSelectionChanged(CancellationToken cancellationToken)
-	{
-		if (cancellationToken.IsCancellationRequested) return;
-		string? selectedText = null;
-		await this.InvokeAsync(() =>
-		{
-			if (HasSelection() is false) return;
-			selectedText = GetSelectedText();
-		});
-		if (string.IsNullOrWhiteSpace(selectedText)) return;
-		var lineBreakCount = 0;
-		var slashRsToRemove = 0;
-			
-		foreach (var c in selectedText.AsSpan())
-		{
-			if (c is '\n') lineBreakCount++;
-			else if (c is '\r') slashRsToRemove++;
-		}
-		var charLength = selectedText.Length - lineBreakCount - slashRsToRemove;
-		_editorCaretPositionService.SelectionInfo = (charLength, lineBreakCount);
-	}
-	
 	private void OnCaretChanged()
 	{
 		var caretPosition = GetCaretPosition(startAt1: true);
