@@ -51,9 +51,12 @@ public partial class ThreadsVariablesSubTab : Control
 	    
 	    var font = _variablesTree.GetThemeFont(ThemeStringNames.Font);
 	    var fontSize = _variablesTree.GetThemeFontSize(ThemeStringNames.FontSize);
-	    var variablesTreeCanvasRid = _variablesTree.GetCanvasItem();
+	    const float padding = 4.0f;
 	    
-	    _variablesTree.DrawString(font, new Vector2(rect.Position.X, rect.Position.Y), variable.Name, HorizontalAlignment.Left, -1, fontSize, Colors.White);
+	    var currentX = rect.Position.X + padding;
+	    var textYPos = rect.Position.Y + (rect.Size.Y + fontSize) / 2 - 2;
+	    
+	    _variablesTree.DrawString(font, new Vector2(currentX, textYPos), variable.Name, HorizontalAlignment.Left, -1, fontSize, Colors.White);
         
         //_textLine.AddString(variable.Name, font, fontSize);
         //_textLine.Draw(variablesTreeCanvasRid, new Vector2(rect.Position.X, rect.Position.Y), Colors.White);
